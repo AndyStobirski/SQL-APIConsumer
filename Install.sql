@@ -134,3 +134,56 @@ as
 	)
 go
 
+/*
+
+
+*/
+if object_id('dbo.ufnGetLocationCoords') is not null
+	drop function dbo.ufnGetLocationCoords
+go
+
+create function [dbo].ufnGetLocationCoords(@WellKnownText varchar(100))
+/*
+	
+	Split the contents of the entry "WellKnownText" into long and lat
+
+	This is derived from a location entry
+
+	e.g. 
+
+		https://api.tfgm.com/odata/Accidents?$expand=Location&$top=2
+
+		returns an array of trafficevents items, each with the child
+
+		"Location": {
+			  "Id": 38831250,
+			  "LocationSpatial": {
+				"Geography": {
+				  "CoordinateSystemId": 4326,
+				  "WellKnownText": "POINT (-2.16602264021093 53.5857669129475)",
+				  "WellKnownBinary": null
+				}
+			  }
+
+*/
+
+returns @ret table
+(
+	Longitude float
+	, Latitude float
+)
+as
+begin
+
+	--declare @sub varchar(100) = 'POINT (-2.16602264021093 53.5857669129475)' --long,lat
+	declare @strip as varchar(100) = substring (@WellKnownText, CHARINDEX('(', @WellKnownText)+1,CHARINDEX(')', @WellKnownText)- CHARINDEX('(', @WellKnownText)-1)
+
+		insert into @ret (Longitude, Latitude)
+		values 
+		(	
+			substring(@strip, 0, charindex(' ', @strip))
+			, substring(@strip, charindex(' ', @strip),100)
+		)
+
+return 
+end

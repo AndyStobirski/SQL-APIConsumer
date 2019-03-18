@@ -224,6 +224,10 @@ select *
 from	dbo.ufnMetroLinksDynamic(null,null,null,null,null,null)
 
 
+/*
+	Pivot Test
+*/
+
 Select	ID
 		, LastUpdated
 		, Direction
