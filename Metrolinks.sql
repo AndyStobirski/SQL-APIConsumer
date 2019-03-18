@@ -222,3 +222,25 @@ from	dbo.ufnMetroLinksStatic(null,null,null,null,null,null)
 
 select *
 from	dbo.ufnMetroLinksDynamic(null,null,null,null,null,null)
+
+
+Select	ID
+		, LastUpdated
+		, Direction
+		, [Key]
+		, [Value]
+
+into	dbo.metrolinkactivity
+
+from
+
+(
+select *
+from	dbo.ufnMetroLinksDynamic(null,null,null,null,null,null)
+) p
+
+unpivot ([Value] for [Key] in 
+			(Dest0, Carriages0, Status0,Wait0,Dest1, Carriages1, Status1,Wait1, Dest2, Carriages2, Status2,Wait2, Dest3, Carriages3, Status3,Wait3)
+		) as unpvt
+
+where	[Value] != ''
