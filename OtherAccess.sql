@@ -568,3 +568,89 @@ go
 
 	select	*
 	from	dbo.ufnScootLoopsDynamic ()
+
+/*
+
+	Traffic Signals
+
+*/
+
+
+drop table if exists [dbo].[TrafficSignals]
+
+go
+
+CREATE TABLE [dbo].[TrafficSignals](
+	[Id] [int] NULL,
+	[SCN] [varchar](255) NULL,
+	[Description] [varchar](255) NULL,
+	[DataSource] [varchar](255) NULL,
+	[RoadName] [varchar](255) NULL,
+	[DateCreated] [datetime] NULL,
+	[LocationID] [int] NULL,
+	[StartLong] [float] NULL,
+	[StartLat] [float] NULL
+) ON [PRIMARY]
+GO
+
+/*
+
+	dbo.ufnTrafficSignals
+
+*/
+drop function if exists [dbo].ufnTrafficSignals
+
+go
+
+create function dbo.ufnTrafficSignals
+(
+	@select NVARCHAR (1000)
+	,	@expand NVARCHAR (1000)
+	,	@filter NVARCHAR (1000)
+	,	@orderby NVARCHAR (100)
+	,	@top NVARCHAR (10) 
+	,	@skip NVARCHAR (10)
+	,	@count NVARCHAR (10) 
+)
+returns table 
+as
+	return
+	(
+		select	[Id]
+				, [SCN]
+				, [Description]
+				, [DataSource]
+				, [RoadName]
+				, [DateCreated]
+				, [LocationID]
+				, [Location].Longitude as StartLong
+				, [Location].Latitude as StartLat
+
+		from	openjson
+				(
+					(
+						select	[value]
+						from	dbo.ufnGetAPIContent('https://api.tfgm.com/odata/TrafficSignals', @expand, @select, @filter,@orderby,@top,@skip,@count)
+						where	[key] = 'value'
+					)
+				)
+
+		with 
+
+				(
+
+					[Id] int 'strict$.Id'
+					, [SCN] varchar(255) '$.SCN'
+					, [Description] varchar(255) '$.Description'
+					, [DataSource] varchar(255) '$.DataSource'
+					, [RoadName] varchar(255) '$.RoadName'
+					, [DateCreated] datetime '$.DateCreated'
+					, [LocationID] int '$.LocationID'
+					, [Location] nvarchar(100) '$.Location.LocationSpatial.Geography.WellKnownText'
+
+				)
+				outer apply dbo.ufnGetLocationCoords([Location]) Location
+
+		)
+
+go
