@@ -14,11 +14,8 @@ go
 ALTER DATABASE TFGM SET TRUSTWORTHY ON
 
 --drop the assembly dependant functions first
-if object_id('dbo.ufnTFGM_Get') is not null
-	drop function dbo.ufnTFGM_Get
-
-if object_id('dbo.ufnTFGM_GetID') is not null
-	drop function dbo.ufnTFGM_GetID
+drop function if exists [dbo].ufnTFGM_Get
+drop function if exists [dbo].ufnTFGM_GetID
 
 go
 
@@ -75,8 +72,8 @@ go
 /*
 	Store the key here
 */
-if object_id('dbo.tfgmKey') is not null
-	drop table dbo.tfgmKey
+drop table if exists dbo.tfgmKey
+
 go
 create table dbo.tfgmKey
 (
@@ -89,8 +86,7 @@ go
 	Scalar function which returns the key
 */
 
-if object_id('dbo.ufnGetKey') is not null
-	drop function dbo.ufnGetKey
+drop function if exists dbo.ufnGetKey
 go
 
 create function dbo.ufnGetKey()
@@ -111,8 +107,7 @@ go
 /*
 	First stage wrapper which breaks the returned JSON in key / value pair
 */
-if object_id('dbo.ufnGetAPIContent') is not null
-	drop function dbo.ufnGetAPIContent
+drop function if exists [dbo].ufnGetAPIContent
 go
 
 create function dbo.ufnGetAPIContent(
@@ -125,21 +120,64 @@ create function dbo.ufnGetAPIContent(
 	,	@skip NVARCHAR (10)
 	,	@count NVARCHAR (10) 
 )
-returns table
-as 
-	return
-	(		
-		SELECT	*
-		FROM	OPENJSON([dbo].[ufnTFGM_Get] (@URL, dbo.ufnGetKey(),@expand,@select,@filter,@orderby,@top,@skip,@count))
-	)
+returns @ret table
+(
+	[key] nvarchar(4000)
+	, [value] nvarchar(max)
+	, [type] tinyint
+)
+as
+	begin
+	
+		declare @json as varchar(max) = [dbo].[ufnTFGM_Get] (@URL, dbo.ufnGetKey(),@expand,@select,@filter,@orderby,@top,@skip,@count)
+
+		if ISJSON(@json) = 1
+
+			begin
+
+				insert into @ret
+				(
+					[key]
+					, [value]
+					, [type]
+				)
+
+				SELECT	[key]
+						, [value]
+						, [type]
+
+				FROM	OPENJSON(@json)
+
+			end
+
+		else
+
+			begin
+
+				insert into @ret
+				(
+					[key]
+					, [value]
+					, [type]
+				)
+
+				select	'error'
+						, @json
+						, 1	--string value
+
+			end
+
+		return
+
+	end
 go
 
 /*
 
+	dbo.ufnGetLocationCoords
 
 */
-if object_id('dbo.ufnGetLocationCoords') is not null
-	drop function dbo.ufnGetLocationCoords
+drop function if exists [dbo].ufnGetLocationCoords
 go
 
 create function [dbo].ufnGetLocationCoords(@WellKnownText varchar(100))
